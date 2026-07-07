@@ -1,0 +1,17 @@
+# datasets
+data/
+datasets/
+cifar-10-batches-py/
+*.tar.gz
+
+# models
+*.pth
+*.pt
+*.ckpt
+
+# python
+__pycache__/
+*.pyc
+
+# vscode
+.vscode/
