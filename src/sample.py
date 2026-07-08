@@ -13,7 +13,7 @@ model = VisionTransformer().to(device)
 
 model.load_state_dict(
     torch.load(
-        "dit.pth",
+        "dit_42_colab_gpu.pth",
         map_location=device
     )
 )
@@ -221,5 +221,21 @@ for idx, step in enumerate(saved_steps):
 
     plt.axis("off")
 
+
+from torchvision.utils import make_grid
+
+
+grid = make_grid(
+    x,
+    nrow=4,
+    normalize=True
+)
+
+
+plt.imshow(
+    grid.permute(1,2,0).cpu()
+)
+
+plt.axis("off")
 
 plt.show()

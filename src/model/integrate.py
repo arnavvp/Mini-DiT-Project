@@ -25,6 +25,7 @@ class VisionTransformer(nn.Module):
         self.channels = channels
         num_patches = self.patch_emb.num_patches
         self.position_embedding = nn.Parameter(torch.zeros(1, num_patches, embed_dim))
+        self.class_embedding = nn.Embedding(10, embed_dim)
         self.time_embedded = TimeEmbedding(embed_dim)
         self.transformerBlocks = nn.Sequential(
             *[Transformer(embed_dim, num_heads) for _ in range(depth)]
@@ -73,10 +74,19 @@ class VisionTransformer(nn.Module):
         return x
 
 
-    def forward(self, x, t):
+    def forward(self, x, t, labels=None):        
         x = self.patch_emb(x)
         batch_size = x.shape[0]
         x = x + self.position_embedding
+        if labels is not None:
+
+          class_emb = self.class_embedding(
+              labels
+          )
+
+          class_emb = class_emb.unsqueeze(1)
+
+          x = x + class_emb
         t = self.time_embedded(t)
         t = t.unsqueeze(1)
         x = x + t

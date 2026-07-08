@@ -22,7 +22,7 @@ noise = torch.randn_like(image)
 
 
 t = torch.tensor(
-    [500],
+    [100],
     device=device
 )
 
@@ -37,7 +37,7 @@ model = VisionTransformer().to(device)
 
 model.load_state_dict(
     torch.load(
-        "dit.pth",
+        "dit_42_colab_gpu.pth",
         map_location=device
     )
 )
@@ -51,13 +51,50 @@ with torch.no_grad():
         t
     )
 
-denoised = noisy - predicted_noise
+alpha_bar = scheduler.alpha_bar[t]
 
+alpha_bar = alpha_bar.view(
+    -1,
+    1,
+    1,
+    1
+)
+
+
+denoised = (
+    noisy
+    -
+    torch.sqrt(
+        1 - alpha_bar
+    )
+    *
+    predicted_noise
+) / torch.sqrt(
+    alpha_bar
+)
+
+
+denoised = torch.clamp(
+    denoised,
+    -1,
+    1
+)
 images = [
     image,
     noisy,
     denoised
 ]
+
+image_mse = (
+    ((image - denoised)**2)
+    .mean()
+    .item()
+)
+
+print(
+    "Image reconstruction MSE:",
+    image_mse
+)
 
 titles = [
     "Original",

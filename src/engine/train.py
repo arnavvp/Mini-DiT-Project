@@ -3,7 +3,7 @@ import torch.nn as nn
 
 from src.model.integrate import VisionTransformer
 from src.data.dataset import get_loaders
-from src.engine.eval import evaluate
+# from src.engine.eval import evaluate
 from tqdm import tqdm
 from src.diff.schedule import NoiseScheduler
 torch.set_num_threads(8)
@@ -19,6 +19,9 @@ model = VisionTransformer().to(device)
 
 
 scheduler = NoiseScheduler()
+scheduler.beta = scheduler.beta.to(device)
+scheduler.alpha = scheduler.alpha.to(device)
+scheduler.alpha_bar = scheduler.alpha_bar.to(device)
 
 
 optimizer = torch.optim.AdamW(
@@ -34,8 +37,10 @@ optimizer = torch.optim.AdamW(
     weight_decay=0.05
 )
 
-epochs = 7
-train_loader, _ = get_loaders()
+epochs = 25
+train_loader, _ = get_loaders(
+    batch_size=256
+)
 
 for epoch in range(epochs):
 
@@ -43,63 +48,66 @@ for epoch in range(epochs):
 
     total_loss = 0
 
-    for images, _ in tqdm(
+
+    for images, labels in tqdm(
         train_loader,
         desc=f"Epoch {epoch+1}"
-        ):
+    ):
 
-            images = images.to(device)
+        images = images.to(device)
+        labels = labels.to(device)
 
-
-            noise = torch.randn_like(
-                images
-            )
-
-
-            t = torch.randint(
-                0,
-                scheduler.timesteps,
-                (images.shape[0],),
-                device=device
-            )
+        noise = torch.randn_like(
+            images
+        )
 
 
-            noisy_images = scheduler.add_noise(
-                images,
-                noise,
-                t
-            )
+        t = torch.randint(
+            0,
+            scheduler.timesteps,
+            (images.shape[0],),
+            device=device
+        )
 
 
-            predicted_noise = model(
-                noisy_images,
-                t
-            )
+        noisy_images = scheduler.add_noise(
+            images,
+            noise,
+            t
+        )
 
 
-            loss = criterion(
-                predicted_noise,
-                noise
-            )
+        predicted_noise = model(
+    noisy_images,
+    t,
+    labels
+)
 
 
-            optimizer.zero_grad()
-
-            loss.backward()
-
-            optimizer.step()
-
-
-            total_loss += loss.item()
+        loss = criterion(
+            predicted_noise,
+            noise
+        )
 
 
-            print(
-                "Loss:",
-                total_loss / len(train_loader)
-            )
+        optimizer.zero_grad()
+
+        loss.backward()
+
+        optimizer.step()
 
 
-            torch.save(
-                model.state_dict(),
-                "dit.pth"
-            )
+        total_loss += loss.item()
+
+
+
+    print(
+        "Epoch Loss:",
+        total_loss / len(train_loader)
+    )
+
+
+    torch.save(
+        model.state_dict(),
+        "dit.pth"
+    )
